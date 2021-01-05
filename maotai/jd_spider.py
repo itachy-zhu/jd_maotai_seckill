@@ -1,18 +1,15 @@
-import random
-import time
-import requests
 import functools
 import json
 import os
 import pickle
+import random
+import time
+from concurrent.futures import ProcessPoolExecutor
 
+import requests
 from lxml import etree
 
 from error.exception import SKException
-from maotai.jd_logger import logger
-from maotai.timer import Timer
-from maotai.config import global_config
-from concurrent.futures import ProcessPoolExecutor
 from helper.jd_helper import (
     parse_json,
     send_wechat,
@@ -21,6 +18,9 @@ from helper.jd_helper import (
     save_image,
     open_image
 )
+from maotai.config import global_config
+from maotai.jd_logger import logger
+from maotai.timer import Timer
 
 
 class SpiderSession:
@@ -270,7 +270,7 @@ class JdSeckill(object):
         self.spider_session = SpiderSession()
         self.spider_session.load_cookies_from_local()
 
-        self.qrlogin = QrLogin(self.spider_session)
+        self.qrLogin = QrLogin(self.spider_session)
 
         # 初始化信息
         self.sku_id = global_config.getRaw('config', 'sku_id')
@@ -289,13 +289,13 @@ class JdSeckill(object):
         二维码登陆
         :return:
         """
-        if self.qrlogin.is_login:
+        if self.qrLogin.is_login:
             logger.info('登录成功')
             return
 
-        self.qrlogin.login_by_qrcode()
+        self.qrLogin.login_by_qrcode()
 
-        if self.qrlogin.is_login:
+        if self.qrLogin.is_login:
             self.nick_name = self.get_username()
             self.spider_session.save_cookies_to_local(self.nick_name)
         else:
@@ -308,7 +308,7 @@ class JdSeckill(object):
 
         @functools.wraps(func)
         def new_func(self, *args, **kwargs):
-            if not self.qrlogin.is_login:
+            if not self.qrLogin.is_login:
                 logger.info("{0} 需登陆后调用，开始扫码登陆".format(func.__name__))
                 self.login_by_qrcode()
             return func(self, *args, **kwargs)
@@ -330,7 +330,7 @@ class JdSeckill(object):
         self._seckill()
 
     @check_login
-    def seckill_by_proc_pool(self, work_count=5):
+    def seckill_by_processes(self, work_count=20):
         """
         多进程进行抢购
         work_count：进程数量
@@ -473,11 +473,7 @@ class JdSeckill(object):
             'Host': 'marathon.jd.com',
             'Referer': 'https://item.jd.com/{}.html'.format(self.sku_id),
         }
-        self.session.get(
-            url=self.seckill_url.get(
-                self.sku_id),
-            headers=headers,
-            allow_redirects=False)
+        self.session.get(url=self.seckill_url.get(self.sku_id), headers=headers, allow_redirects=False)
 
     def request_seckill_checkout_page(self):
         """访问抢购订单结算页面"""
