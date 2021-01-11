@@ -330,7 +330,7 @@ class JdSeckill(object):
         self._seckill()
 
     @check_login
-    def seckill_by_processes(self, work_count=20):
+    def seckill_by_processes(self, work_count=10):
         """
         多进程进行抢购
         work_count：进程数量
